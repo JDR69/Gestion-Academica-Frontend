@@ -43,6 +43,30 @@ export const Sidebar = ({ user }) => {
       path: '/schedule',
       hasSubmenu: true
     },
+    {
+      id: 'materias',
+      label: 'Materias',
+      icon: ClipboardList,
+      path: '/materias'
+    },
+    {
+      id: 'horarios',
+      label: 'Horarios',
+      icon: Clock,
+      path: '/horarios'
+    },
+    {
+      id: 'grupos',
+      label: 'Grupos',
+      icon: Table,
+      path: '/grupos'
+    },
+    {
+      id: 'aulas',
+      label: 'Aulas',
+      icon: Package,
+      path: '/aulas'
+    },
   ];
 
   const supportItems = [

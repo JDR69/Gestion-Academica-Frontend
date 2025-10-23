@@ -37,10 +37,10 @@ export const Sidebar = ({ user }) => {
       path: '/perfil'
     },
     {
-      id: 'forms',
-      label: 'Forms',
-      icon: FileText,
-      path: '/forms',
+      id: 'schedule',
+      label: 'Schedule',
+      icon: Calendar,
+      path: '/schedule',
       hasSubmenu: true
     },
   ];

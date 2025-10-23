@@ -6,6 +6,7 @@ import { AdminDashboard } from './Pages/AdminDashboard';
 import { TeacherDashboard } from './Pages/TeacherDashboard';
 import { Perfil } from './Pages/Perfil';
 import { useState } from 'react';
+import { Schedule } from './Pages/Schedule';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -39,6 +40,10 @@ function App() {
           <Route 
             path="/perfil" 
             element={user ? <Perfil user={user} setUser={setUser} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/schedule" 
+            element={user ? <Schedule /> : <Navigate to="/login" />} 
           />
           <Route path="/" element={<Navigate to="/login" />} />
         </Routes>

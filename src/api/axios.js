@@ -24,10 +24,10 @@ export const updateGrupo = (id, data) => api.put(`/grupos/${id}`, data);
 export const deleteGrupo = (id) => api.delete(`/grupos/${id}`);
 
 // Aulas
-export const getAulas = () => api.get('/aulas');
-export const createAula = (data) => api.post('/aulas', data);
-export const updateAula = (id, data) => api.put(`/aulas/${id}`, data);
-export const deleteAula = (id) => api.delete(`/aulas/${id}`);
+export const getAulas = () => api.get('/aula');
+export const createAula = (data) => api.post('/aula', data);
+export const updateAula = (id, data) => api.put(`/aula/${id}`, data);
+export const deleteAula = (id) => api.delete(`/aula/${id}`);
 
 // Usuarios (ejemplo para login y registro)
 export const login = (data) => api.post('/login', data);

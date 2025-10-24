@@ -36,6 +36,7 @@ export const Navbar = ({ user, setUser }) => {
   }, []);
 
   const handleLogout = () => {
+    try { localStorage.removeItem('authUser'); } catch {}
     setUser(null);
     navigate('/login');
   };

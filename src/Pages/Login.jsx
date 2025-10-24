@@ -1,6 +1,21 @@
+import { login } from '../api/axios';
 
 import { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, GraduationCap } from 'lucide-react';
+// Ejemplo de función para login de admin
+const handleAdminLogin = async (setUser) => {
+  try {
+    const response = await login({
+      email: 'admin@admin.com',
+      password: 'admin123'
+    });
+    setUser(response.data.user || response.data);
+    console.log('Login exitoso:', response.data);
+  } catch (error) {
+    console.error('Error de login:', error.response?.data || error.message);
+    alert('Error de login: ' + (error.response?.data?.message || error.message));
+  }
+};
 
 export const Login = ({ setUser }) => {
   const [formData, setFormData] = useState({
@@ -39,30 +54,28 @@ export const Login = ({ setUser }) => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-
-    // Simulación de login - en producción esto sería una llamada a la API
-    if (formData.email === 'admin@admin.com') {
-      setUser({ 
-        email: formData.email, 
-        role: 'admin', 
-        name: 'Administrador',
-        id: 1
+    // Aquí solo se permite el login real por API, no por datos de prueba
+    try {
+      const response = await login({
+        email: formData.email,
+        password: formData.password
       });
-    } else if (formData.email === 'teacher@teacher.com') {
-      setUser({ 
-        email: formData.email, 
-        role: 'teacher', 
-        name: 'Profesor',
-        id: 2
-      });
-    } else {
+      // Solo permitir login si el backend responde con usuario válido
+      const u = response.data && (response.data.user || response.data);
+      if (u) {
+        setUser(u);
+        try { localStorage.setItem('authUser', JSON.stringify(u)); } catch {}
+      } else {
+        setErrors({ email: 'Credenciales inválidas' });
+      }
+    } catch (error) {
       setErrors({ email: 'Credenciales inválidas' });
     }
   };
@@ -70,7 +83,6 @@ export const Login = ({ setUser }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-600 via-purple-600 to-indigo-800">
       <div className="max-w-md w-full mx-4">
-        {/* Card principal */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {/* Header */}
           <div className="text-center mb-8">
@@ -101,9 +113,8 @@ export const Login = ({ setUser }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`block w-full pl-10 pr-3 py-3 border ${
-                    errors.email ? 'border-red-300' : 'border-gray-300'
-                  } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
+                  className={`block w-full pl-10 pr-3 py-3 border ${errors.email ? 'border-red-300' : 'border-gray-300'
+                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
                   placeholder="ejemplo@correo.com"
                 />
               </div>
@@ -126,9 +137,8 @@ export const Login = ({ setUser }) => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className={`block w-full pl-10 pr-10 py-3 border ${
-                    errors.password ? 'border-red-300' : 'border-gray-300'
-                  } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
+                  className={`block w-full pl-10 pr-10 py-3 border ${errors.password ? 'border-red-300' : 'border-gray-300'
+                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
                   placeholder="••••••••"
                 />
                 <button
@@ -156,14 +166,6 @@ export const Login = ({ setUser }) => {
               Iniciar Sesión
             </button>
           </form>
-
-          {/* Datos de prueba */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 font-medium mb-2">Datos de prueba:</p>
-            <p className="text-xs text-gray-500">Admin: admin@admin.com</p>
-            <p className="text-xs text-gray-500">Profesor: teacher@teacher.com</p>
-            <p className="text-xs text-gray-500">Contraseña: cualquiera</p>
-          </div>
         </div>
       </div>
     </div>

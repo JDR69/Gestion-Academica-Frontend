@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/sidebar';
 import { Navbar } from '../components/navbar';
 import { Plus, Edit, Trash2, FileText } from 'lucide-react';
@@ -7,31 +7,62 @@ import { Plus, Edit, Trash2, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-
-const initialMaterias = [
-  { id: 1, nombre: 'Matemáticas I' },
-  { id: 2, nombre: 'Álgebra Lineal' },
-  { id: 3, nombre: 'Cálculo I' }
-];
+import { getMaterias, createMateria, updateMateria, deleteMateria } from '../api/axios';
 
 
 export const Materia = ({ user, setUser }) => {
-  const [materias, setMaterias] = useState(initialMaterias);
+  const [materias, setMaterias] = useState([]);
   const [nombreNueva, setNombreNueva] = useState('');
   const [editId, setEditId] = useState(null);
   const [editNombre, setEditNombre] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Cargar materias desde el backend
+  useEffect(() => {
+    const fetchMaterias = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const { data } = await getMaterias();
+        // data puede ser {data: [...]} o un array directo; normalizamos y mapeamos a {id, nombre}
+        const raw = Array.isArray(data) ? data : (data.data || []);
+        const list = raw.map(m => ({ id: m.ID ?? m.id, nombre: m.Nombre ?? m.nombre }));
+        setMaterias(list);
+      } catch (e) {
+        console.error('Error cargando materias', e);
+        setError('No se pudo cargar la lista de materias');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMaterias();
+  }, []);
 
   // Crear materia
-  const handleAdd = () => {
-    if (nombreNueva.trim()) {
-      setMaterias([...materias, { id: Date.now(), nombre: nombreNueva }]);
+  const handleAdd = async () => {
+    if (!nombreNueva.trim()) return;
+    try {
+      const { data } = await createMateria({ Nombre: nombreNueva.trim() });
+      const created = data?.data || data; // normalizar
+      const normalized = { id: created.ID ?? created.id, nombre: created.Nombre ?? created.nombre };
+      setMaterias(prev => [...prev, normalized]);
       setNombreNueva('');
+    } catch (e) {
+      console.error('Error creando materia', e);
+      alert('No se pudo crear la materia');
     }
   };
 
   // Eliminar materia
-  const handleDelete = (id) => {
-    setMaterias(materias.filter(m => m.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await deleteMateria(id);
+      setMaterias(prev => prev.filter(m => m.id !== id));
+    } catch (e) {
+      console.error('Error eliminando materia', e);
+      alert('No se pudo eliminar la materia');
+    }
   };
 
   // Iniciar edición
@@ -41,10 +72,18 @@ export const Materia = ({ user, setUser }) => {
   };
 
   // Guardar edición
-  const handleUpdate = () => {
-    setMaterias(materias.map(m => m.id === editId ? { ...m, nombre: editNombre } : m));
-    setEditId(null);
-    setEditNombre('');
+  const handleUpdate = async () => {
+    try {
+      const { data } = await updateMateria(editId, { Nombre: editNombre });
+      const updated = data?.data || data;
+      const normalized = { id: updated.ID ?? updated.id, nombre: updated.Nombre ?? updated.nombre };
+      setMaterias(prev => prev.map(m => (m.id === editId ? normalized : m)));
+      setEditId(null);
+      setEditNombre('');
+    } catch (e) {
+      console.error('Error actualizando materia', e);
+      alert('No se pudo actualizar la materia');
+    }
   };
 
 
@@ -97,6 +136,12 @@ export const Materia = ({ user, setUser }) => {
               </button>
             </div>
 
+            {loading && (
+              <div className="mb-4 text-sm text-gray-500">Cargando materias...</div>
+            )}
+            {error && (
+              <div className="mb-4 text-sm text-red-600">{error}</div>
+            )}
             {/* Lista de materias */}
             <ul className="space-y-4 mb-8">
               {materias.map(m => (

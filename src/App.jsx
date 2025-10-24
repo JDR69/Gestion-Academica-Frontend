@@ -5,7 +5,7 @@ import { Register } from './Pages/Register';
 import { AdminDashboard } from './Pages/AdminDashboard';
 import { TeacherDashboard } from './Pages/TeacherDashboard';
 import { Perfil } from './Pages/Perfil';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Schedule } from './Pages/Schedule';
 import { Materia } from './Pages/Materia';
 import { Horarios } from './Pages/Horarios';
@@ -14,6 +14,18 @@ import { Aula } from './Pages/Aula';
 
 function App() {
   const [user, setUser] = useState(null);
+  
+  // Rehidratar sesión desde localStorage al cargar la app
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('authUser');
+      if (stored) {
+        setUser(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error('No se pudo leer authUser de localStorage', e);
+    }
+  }, []);
   
   return (
     <Router>

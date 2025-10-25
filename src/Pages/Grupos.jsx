@@ -1,33 +1,63 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/sidebar';
 import { Navbar } from '../components/navbar';
 import { Plus, Edit, Trash2, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-
-const initialGrupos = [
-	{ id: 1, nombre: 'Grupo A' },
-	{ id: 2, nombre: 'Grupo B' }
-];
+import { getGrupos, createGrupo, updateGrupo, deleteGrupo } from '../api/axios';
 
 export const Grupos = ({ user, setUser }) => {
-	const [grupos, setGrupos] = useState(initialGrupos);
+	const [grupos, setGrupos] = useState([]);
 	const [nombreNuevo, setNombreNuevo] = useState('');
 	const [editId, setEditId] = useState(null);
 	const [editNombre, setEditNombre] = useState('');
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState('');
+
+	useEffect(() => {
+		const fetchGrupos = async () => {
+			setLoading(true);
+			setError('');
+			try {
+				const { data } = await getGrupos();
+				const raw = Array.isArray(data) ? data : (data.data || []);
+				const list = raw.map(g => ({ id: g.ID ?? g.id, nombre: g.Nombre ?? g.nombre }));
+				setGrupos(list);
+			} catch (e) {
+				console.error('Error cargando grupos', e);
+				setError('No se pudo cargar la lista de grupos');
+			} finally {
+				setLoading(false);
+			}
+		};
+		fetchGrupos();
+	}, []);
 
 	// Crear grupo
-	const handleAdd = () => {
-		if (nombreNuevo.trim()) {
-			setGrupos([...grupos, { id: Date.now(), nombre: nombreNuevo }]);
+	const handleAdd = async () => {
+		if (!nombreNuevo.trim()) return;
+		try {
+			const { data } = await createGrupo({ Nombre: nombreNuevo.trim() });
+			const created = data?.data || data;
+			const normalized = { id: created.ID ?? created.id, nombre: created.Nombre ?? created.nombre };
+			setGrupos(prev => [...prev, normalized]);
 			setNombreNuevo('');
+		} catch (e) {
+			console.error('Error creando grupo', e);
+			alert('No se pudo crear el grupo');
 		}
 	};
 
 	// Eliminar grupo
-	const handleDelete = (id) => {
-		setGrupos(grupos.filter(g => g.id !== id));
+	const handleDelete = async (id) => {
+		try {
+			await deleteGrupo(id);
+			setGrupos(prev => prev.filter(g => g.id !== id));
+		} catch (e) {
+			console.error('Error eliminando grupo', e);
+			alert('No se pudo eliminar el grupo');
+		}
 	};
 
 	// Iniciar edición
@@ -37,10 +67,18 @@ export const Grupos = ({ user, setUser }) => {
 	};
 
 	// Guardar edición
-	const handleUpdate = () => {
-		setGrupos(grupos.map(g => g.id === editId ? { ...g, nombre: editNombre } : g));
-		setEditId(null);
-		setEditNombre('');
+	const handleUpdate = async () => {
+		try {
+			const { data } = await updateGrupo(editId, { Nombre: editNombre });
+			const updated = data?.data || data;
+			const normalized = { id: updated.ID ?? updated.id, nombre: updated.Nombre ?? updated.nombre };
+			setGrupos(prev => prev.map(g => (g.id === editId ? normalized : g)));
+			setEditId(null);
+			setEditNombre('');
+		} catch (e) {
+			console.error('Error actualizando grupo', e);
+			alert('No se pudo actualizar el grupo');
+		}
 	};
 
 	// PDF
@@ -90,6 +128,12 @@ export const Grupos = ({ user, setUser }) => {
 								Crear
 							</button>
 						</div>
+						{loading && (
+							<div className="mb-4 text-sm text-gray-500">Cargando grupos...</div>
+						)}
+						{error && (
+							<div className="mb-4 text-sm text-red-600">{error}</div>
+						)}
 						<ul className="space-y-4 mb-8">
 							{grupos.map(g => (
 								<li key={g.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4 border border-gray-200">

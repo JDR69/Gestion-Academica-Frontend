@@ -39,3 +39,21 @@ export const getAsistencias = () => api.get('/asistencias');
 export const createAsistencia = (data) => api.post('/asistencias', data);
 export const updateAsistencia = (id, data) => api.put(`/asistencias/${id}`, data);
 export const deleteAsistencia = (id) => api.delete(`/asistencias/${id}`);
+
+// Docentes
+export const getDocentes = () => api.get('/docente');
+export const createDocente = (data) => api.post('/docente', data);
+export const updateDocente = (id, data) => api.put(`/docente/${id}`, data);
+export const deleteDocente = (id) => api.delete(`/docente/${id}`);
+
+// Detalle Horario (Asignaciones)
+export const getDetalleHorarios = () => api.get('/detalle-horario');
+export const createDetalleHorario = (data) => api.post('/detalle-horario', data);
+export const updateDetalleHorario = (id, data) => api.put(`/detalle-horario/${id}`, data);
+export const deleteDetalleHorario = (id) => api.delete(`/detalle-horario/${id}`);
+
+// Detalle Docente (Asignación de docente a horario)
+export const getDetalleDocentes = () => api.get('/detalle-docente');
+export const createDetalleDocente = (data) => api.post('/detalle-docente', data);
+export const updateDetalleDocente = (id, data) => api.put(`/detalle-docente/${id}`, data);
+export const deleteDetalleDocente = (id) => api.delete(`/detalle-docente/${id}`);

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: 'http://localhost:8000/api', // Cambia la URL si tu backend está en otro puerto o dominio
+  baseURL: 'https://gestion-academica-backend-dl66.onrender.com/api', // Cambia la URL si tu backend está en otro puerto o dominio
   withCredentials: true,
 });
 

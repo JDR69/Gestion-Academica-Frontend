@@ -1,46 +1,120 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Calendar, Clock, Edit3, Trash2, Eye, Plus, Save, X } from 'lucide-react';
 import { Sidebar } from '../components/sidebar';
 import { Navbar } from '../components/navbar';
-
-const initialHorarios = [
-  { id: 1, horario: '08:00 - 10:00', aula: '101', grupo: 'A', materia: 'Matemáticas', docente: 'María González' },
-  { id: 2, horario: '10:00 - 12:00', aula: '203', grupo: 'B', materia: 'Historia', docente: 'Juan Pérez' },
-  { id: 3, horario: '14:00 - 16:00', aula: '105', grupo: 'C', materia: 'Física', docente: 'Ana Torres' },
-];
-
-// Simulación de datos de la BD
-const horariosBD = ['08:00 - 10:00', '10:00 - 12:00', '14:00 - 16:00', '16:00 - 18:00'];
-const aulasBD = ['101', '203', '105', '301'];
-const gruposBD = ['A', 'B', 'C', 'D'];
-const materiasBD = ['Matemáticas', 'Historia', 'Física', 'Química'];
-const docentesBD = ['María González', 'Juan Pérez', 'Ana Torres', 'Carlos Ruiz'];
+import { 
+  getDetalleHorarios, 
+  createDetalleHorario, 
+  updateDetalleHorario, 
+  deleteDetalleHorario,
+  getHorarios,
+  getAulas,
+  getGrupos,
+  getMaterias,
+  getDocentes,
+  getDetalleDocentes,
+  createDetalleDocente,
+  deleteDetalleDocente
+} from '../api/axios';
 
 export const Schedule = ({ user, setUser }) => {
-  const [horarios, setHorarios] = useState(initialHorarios);
+  const [horarios, setHorarios] = useState([]);
   const [modal, setModal] = useState({ open: false, mode: '', horario: null });
-  const [form, setForm] = useState({ horario: '', aula: '', grupo: '', materia: '', docente: '' });
+  const [form, setForm] = useState({ Horario_ID: '', Aula_ID: '', Grupo_ID: '', Materia_ID: '', docente_ids: [] });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  
+  // Datos de catálogos
+  const [horariosBD, setHorariosBD] = useState([]);
+  const [aulasBD, setAulasBD] = useState([]);
+  const [gruposBD, setGruposBD] = useState([]);
+  const [materiasBD, setMateriasBD] = useState([]);
+  const [docentesBD, setDocentesBD] = useState([]);
+  const [detalleDocentes, setDetalleDocentes] = useState([]);
+
+  // Cargar datos al montar el componente
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  const fetchAllData = async () => {
+    try {
+      setLoading(true);
+      const [horariosRes, aulasRes, gruposRes, materiasRes, docentesRes, detalleHorariosRes, detalleDocentesRes] = await Promise.all([
+        getHorarios(),
+        getAulas(),
+        getGrupos(),
+        getMaterias(),
+        getDocentes(),
+        getDetalleHorarios(),
+        getDetalleDocentes()
+      ]);
+      
+      setHorariosBD(horariosRes.data);
+      setAulasBD(aulasRes.data);
+      setGruposBD(gruposRes.data);
+      setMateriasBD(materiasRes.data);
+      setDocentesBD(docentesRes.data);
+      setHorarios(detalleHorariosRes.data);
+      setDetalleDocentes(detalleDocentesRes.data);
+    } catch (error) {
+      console.error('Error al cargar datos:', error);
+      alert('Error al cargar los datos del servidor');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para obtener los docentes asignados a un detalle de horario
+  const getDocentesForHorario = (detalleHorarioId) => {
+    return detalleDocentes
+      .filter(dd => dd.ID_Detalle_Horario === detalleHorarioId)
+      .map(dd => dd.docente?.Nombre || 'N/A')
+      .join(', ') || 'Sin asignar';
+  };
+
+  // Función para formatear los datos para mostrar en la tabla
+  const formatHorarioDisplay = (h) => {
+    const horario = horariosBD.find(hr => hr.ID === h.Horario_ID);
+    const aula = aulasBD.find(a => a.ID === h.Aula_ID);
+    const grupo = gruposBD.find(g => g.ID === h.Grupo_ID);
+    const materia = materiasBD.find(m => m.ID === h.Materia_ID);
+    
+    return {
+      id: h.ID,
+      horario: horario ? `${horario.Hora_Inicio} - ${horario.Hora_Fin}` : 'N/A',
+      aula: aula?.Nombre || 'N/A',
+      grupo: grupo?.Nombre || 'N/A',
+      materia: materia?.Nombre || 'N/A',
+      docente: getDocentesForHorario(h.ID),
+      original: h
+    };
+  };
 
   // Exportar a PDF
   const handleReportPDF = () => {
     try {
       const doc = new jsPDF();
-      doc.text('Reporte de Horarios', 14, 16);
+      doc.text('Reporte de Horarios Asignados', 14, 16);
+      const data = horarios.map(h => {
+        const formatted = formatHorarioDisplay(h);
+        return [formatted.horario, formatted.aula, formatted.grupo, formatted.materia, formatted.docente];
+      });
       autoTable(doc, {
         startY: 22,
-        head: [['Horario', 'Aula', 'Grupo', 'Materia', 'Docente']],
-        body: horarios.map(h => [h.horario, h.aula, h.grupo, h.materia, h.docente]),
+        head: [['Horario', 'Aula', 'Grupo', 'Materia', 'Docente(s)']],
+        body: data,
         theme: 'grid',
-        styles: { halign: 'center' },
+        styles: { halign: 'center', fontSize: 9 },
         headStyles: { fillColor: [37, 99, 235] },
       });
-      doc.save('horarios.pdf');
+      doc.save('horarios_asignados.pdf');
     } catch (error) {
+      console.error('Error al generar PDF:', error);
       alert('Error al generar PDF: ' + error.message);
     }
   };
@@ -48,65 +122,160 @@ export const Schedule = ({ user, setUser }) => {
   // Exportar a Excel
   const handleReportExcel = () => {
     try {
-      const ws = XLSX.utils.json_to_sheet(horarios);
+      const data = horarios.map(h => {
+        const formatted = formatHorarioDisplay(h);
+        return {
+          Horario: formatted.horario,
+          Aula: formatted.aula,
+          Grupo: formatted.grupo,
+          Materia: formatted.materia,
+          'Docente(s)': formatted.docente
+        };
+      });
+      const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Horarios');
-      XLSX.writeFile(wb, 'horarios.xlsx');
+      XLSX.writeFile(wb, 'horarios_asignados.xlsx');
     } catch (error) {
+      console.error('Error al generar Excel:', error);
       alert('Error al generar Excel: ' + error.message);
     }
   };
-
-  // ...existing code...
 
   // Abrir modal para crear, editar o ver detalle
   const openModal = (mode, horario = null) => {
     setModal({ open: true, mode, horario });
     setErrors({});
     if (horario) {
-      setForm({ ...horario });
+      // Obtener los IDs de docentes asignados
+      const docentesAsignados = detalleDocentes
+        .filter(dd => dd.ID_Detalle_Horario === horario.ID)
+        .map(dd => dd.ID_Docente);
+      
+      setForm({ 
+        Horario_ID: horario.Horario_ID,
+        Aula_ID: horario.Aula_ID,
+        Grupo_ID: horario.Grupo_ID,
+        Materia_ID: horario.Materia_ID,
+        docente_ids: docentesAsignados
+      });
     } else {
-      setForm({ horario: '', aula: '', grupo: '', materia: '', docente: '' });
+      setForm({ Horario_ID: '', Aula_ID: '', Grupo_ID: '', Materia_ID: '', docente_ids: [] });
     }
   };
 
   // Cerrar modal
   const closeModal = () => {
     setModal({ open: false, mode: '', horario: null });
-    setForm({ horario: '', aula: '', grupo: '', materia: '', docente: '' });
+    setForm({ Horario_ID: '', Aula_ID: '', Grupo_ID: '', Materia_ID: '', docente_ids: [] });
     setErrors({});
   };
 
   // Validar formulario
   const validate = () => {
     const newErrors = {};
-    if (!form.horario) newErrors.horario = 'Horario requerido';
-    if (!form.aula) newErrors.aula = 'Aula requerida';
-    if (!form.grupo) newErrors.grupo = 'Grupo requerido';
-    if (!form.materia) newErrors.materia = 'Materia requerida';
-    if (!form.docente) newErrors.docente = 'Docente requerido';
+    if (!form.Horario_ID) newErrors.Horario_ID = 'Horario requerido';
+    if (!form.Aula_ID) newErrors.Aula_ID = 'Aula requerida';
+    if (!form.Grupo_ID) newErrors.Grupo_ID = 'Grupo requerido';
+    if (!form.Materia_ID) newErrors.Materia_ID = 'Materia requerida';
+    if (!form.docente_ids || form.docente_ids.length === 0) newErrors.docente_ids = 'Debe seleccionar al menos un docente';
     return newErrors;
   };
 
   // Crear o editar horario
-  const handleSave = () => {
+  const handleSave = async () => {
     const newErrors = validate();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    if (modal.mode === 'edit') {
-      setHorarios(horarios.map(h => h.id === modal.horario.id ? { ...form, id: h.id } : h));
-    } else {
-      setHorarios([...horarios, { ...form, id: Date.now() }]);
+
+    try {
+      setLoading(true);
+      const detalleHorarioData = {
+        Materia_ID: parseInt(form.Materia_ID),
+        Grupo_ID: parseInt(form.Grupo_ID),
+        Aula_ID: parseInt(form.Aula_ID),
+        Horario_ID: parseInt(form.Horario_ID)
+      };
+
+      if (modal.mode === 'edit') {
+        // Actualizar detalle horario
+        await updateDetalleHorario(modal.horario.ID, detalleHorarioData);
+        
+        // Eliminar asignaciones anteriores de docentes
+        const docentesAnteriores = detalleDocentes.filter(dd => dd.ID_Detalle_Horario === modal.horario.ID);
+        for (const dd of docentesAnteriores) {
+          await deleteDetalleDocente(dd.ID);
+        }
+        
+        // Crear nuevas asignaciones de docentes
+        for (const docenteId of form.docente_ids) {
+          await createDetalleDocente({
+            ID_Docente: parseInt(docenteId),
+            ID_Detalle_Horario: modal.horario.ID,
+            ID_Asistencia: 1 // Valor por defecto, ajustar según tu lógica
+          });
+        }
+      } else {
+        // Crear nuevo detalle horario
+        const response = await createDetalleHorario(detalleHorarioData);
+        const nuevoDetalleHorarioId = response.data.ID;
+        
+        // Asignar docentes al nuevo detalle horario
+        for (const docenteId of form.docente_ids) {
+          await createDetalleDocente({
+            ID_Docente: parseInt(docenteId),
+            ID_Detalle_Horario: nuevoDetalleHorarioId,
+            ID_Asistencia: 1 // Valor por defecto, ajustar según tu lógica
+          });
+        }
+      }
+      
+      // Recargar datos
+      await fetchAllData();
+      closeModal();
+    } catch (error) {
+      console.error('Error al guardar horario:', error);
+      alert('Error al guardar el horario: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
     }
-    closeModal();
   };
 
   // Eliminar horario
-  const handleDelete = (id) => {
-    if (window.confirm('¿Seguro que deseas eliminar este horario?')) {
-      setHorarios(horarios.filter(h => h.id !== id));
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Seguro que deseas eliminar este horario y sus asignaciones de docentes?')) {
+      try {
+        setLoading(true);
+        
+        // Eliminar primero las asignaciones de docentes
+        const docentesAsignados = detalleDocentes.filter(dd => dd.ID_Detalle_Horario === id);
+        for (const dd of docentesAsignados) {
+          await deleteDetalleDocente(dd.ID);
+        }
+        
+        // Luego eliminar el detalle horario
+        await deleteDetalleHorario(id);
+        
+        // Recargar datos
+        await fetchAllData();
+      } catch (error) {
+        console.error('Error al eliminar horario:', error);
+        alert('Error al eliminar el horario: ' + (error.response?.data?.message || error.message));
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Manejar selección múltiple de docentes
+  const handleDocenteChange = (docenteId) => {
+    const id = parseInt(docenteId);
+    if (form.docente_ids.includes(id)) {
+      setForm({ ...form, docente_ids: form.docente_ids.filter(d => d !== id) });
+    } else {
+      setForm({ ...form, docente_ids: [...form.docente_ids, id] });
     }
   };
 
@@ -155,48 +324,58 @@ export const Schedule = ({ user, setUser }) => {
                       <th className="px-4 py-3 text-left">Aula</th>
                       <th className="px-4 py-3 text-left">Grupo</th>
                       <th className="px-4 py-3 text-left">Materia</th>
-                      <th className="px-4 py-3 text-left">Docente</th>
+                      <th className="px-4 py-3 text-left">Docente(s)</th>
                       <th className="px-4 py-3 text-center">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {horarios.length === 0 ? (
+                    {loading ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-8 text-gray-500">No hay horarios registrados.</td>
+                        <td colSpan={6} className="text-center py-8 text-gray-500">Cargando...</td>
+                      </tr>
+                    ) : horarios.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="text-center py-8 text-gray-500">No hay horarios asignados.</td>
                       </tr>
                     ) : (
-                      horarios.map(h => (
-                        <tr key={h.id} className="border-b border-gray-100 hover:bg-blue-50 transition-colors">
-                          <td className="px-4 py-3">{h.horario}</td>
-                          <td className="px-4 py-3">{h.aula}</td>
-                          <td className="px-4 py-3">{h.grupo}</td>
-                          <td className="px-4 py-3">{h.materia}</td>
-                          <td className="px-4 py-3">{h.docente}</td>
-                          <td className="px-4 py-3 text-center">
-                            <button
-                              onClick={() => openModal('detail', h)}
-                              className="p-2 rounded-lg text-blue-600 hover:bg-blue-100 mr-1"
-                              title="Ver Detalle"
-                            >
-                              <Eye className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => openModal('edit', h)}
-                              className="p-2 rounded-lg text-purple-600 hover:bg-purple-100 mr-1"
-                              title="Editar"
-                            >
-                              <Edit3 className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(h.id)}
-                              className="p-2 rounded-lg text-red-600 hover:bg-red-100"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      horarios.map(h => {
+                        const formatted = formatHorarioDisplay(h);
+                        return (
+                          <tr key={h.ID} className="border-b border-gray-100 hover:bg-blue-50 transition-colors">
+                            <td className="px-4 py-3">{formatted.horario}</td>
+                            <td className="px-4 py-3">{formatted.aula}</td>
+                            <td className="px-4 py-3">{formatted.grupo}</td>
+                            <td className="px-4 py-3">{formatted.materia}</td>
+                            <td className="px-4 py-3">{formatted.docente}</td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => openModal('detail', h)}
+                                className="p-2 rounded-lg text-blue-600 hover:bg-blue-100 mr-1"
+                                title="Ver Detalle"
+                                disabled={loading}
+                              >
+                                <Eye className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => openModal('edit', h)}
+                                className="p-2 rounded-lg text-purple-600 hover:bg-purple-100 mr-1"
+                                title="Editar"
+                                disabled={loading}
+                              >
+                                <Edit3 className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(h.ID)}
+                                className="p-2 rounded-lg text-red-600 hover:bg-red-100"
+                                title="Eliminar"
+                                disabled={loading}
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -228,97 +407,114 @@ export const Schedule = ({ user, setUser }) => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Horario</label>
                       {modal.mode === 'detail' ? (
-                        <div className="py-2 text-gray-900 font-medium">{form.horario}</div>
+                        <div className="py-2 text-gray-900 font-medium">
+                          {horariosBD.find(h => h.ID === form.Horario_ID)?.Hora_Inicio} - {horariosBD.find(h => h.ID === form.Horario_ID)?.Hora_Fin}
+                        </div>
                       ) : (
                         <select
-                          name="horario"
-                          value={form.horario}
-                          onChange={e => setForm(f => ({ ...f, horario: e.target.value }))}
-                          className={`w-full px-3 py-2 border ${errors.horario ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                          name="Horario_ID"
+                          value={form.Horario_ID}
+                          onChange={e => setForm(f => ({ ...f, Horario_ID: e.target.value }))}
+                          className={`w-full px-3 py-2 border ${errors.Horario_ID ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                          disabled={loading}
                         >
                           <option value="">Selecciona un horario</option>
-                          {horariosBD.map((h, idx) => (
-                            <option key={idx} value={h}>{h}</option>
+                          {horariosBD.map((h) => (
+                            <option key={h.ID} value={h.ID}>{h.Hora_Inicio} - {h.Hora_Fin}</option>
                           ))}
                         </select>
                       )}
-                      {errors.horario && <p className="text-xs text-red-600 mt-1">{errors.horario}</p>}
+                      {errors.Horario_ID && <p className="text-xs text-red-600 mt-1">{errors.Horario_ID}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Aula</label>
                       {modal.mode === 'detail' ? (
-                        <div className="py-2 text-gray-900 font-medium">{form.aula}</div>
+                        <div className="py-2 text-gray-900 font-medium">
+                          {aulasBD.find(a => a.ID === form.Aula_ID)?.Nombre}
+                        </div>
                       ) : (
                         <select
-                          name="aula"
-                          value={form.aula}
-                          onChange={e => setForm(f => ({ ...f, aula: e.target.value }))}
-                          className={`w-full px-3 py-2 border ${errors.aula ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                          name="Aula_ID"
+                          value={form.Aula_ID}
+                          onChange={e => setForm(f => ({ ...f, Aula_ID: e.target.value }))}
+                          className={`w-full px-3 py-2 border ${errors.Aula_ID ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                          disabled={loading}
                         >
                           <option value="">Selecciona un aula</option>
-                          {aulasBD.map((a, idx) => (
-                            <option key={idx} value={a}>{a}</option>
+                          {aulasBD.map((a) => (
+                            <option key={a.ID} value={a.ID}>{a.Nombre}</option>
                           ))}
                         </select>
                       )}
-                      {errors.aula && <p className="text-xs text-red-600 mt-1">{errors.aula}</p>}
+                      {errors.Aula_ID && <p className="text-xs text-red-600 mt-1">{errors.Aula_ID}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Grupo</label>
                       {modal.mode === 'detail' ? (
-                        <div className="py-2 text-gray-900 font-medium">{form.grupo}</div>
+                        <div className="py-2 text-gray-900 font-medium">
+                          {gruposBD.find(g => g.ID === form.Grupo_ID)?.Nombre}
+                        </div>
                       ) : (
                         <select
-                          name="grupo"
-                          value={form.grupo}
-                          onChange={e => setForm(f => ({ ...f, grupo: e.target.value }))}
-                          className={`w-full px-3 py-2 border ${errors.grupo ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                          name="Grupo_ID"
+                          value={form.Grupo_ID}
+                          onChange={e => setForm(f => ({ ...f, Grupo_ID: e.target.value }))}
+                          className={`w-full px-3 py-2 border ${errors.Grupo_ID ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                          disabled={loading}
                         >
                           <option value="">Selecciona un grupo</option>
-                          {gruposBD.map((g, idx) => (
-                            <option key={idx} value={g}>{g}</option>
+                          {gruposBD.map((g) => (
+                            <option key={g.ID} value={g.ID}>{g.Nombre}</option>
                           ))}
                         </select>
                       )}
-                      {errors.grupo && <p className="text-xs text-red-600 mt-1">{errors.grupo}</p>}
+                      {errors.Grupo_ID && <p className="text-xs text-red-600 mt-1">{errors.Grupo_ID}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Materia</label>
                       {modal.mode === 'detail' ? (
-                        <div className="py-2 text-gray-900 font-medium">{form.materia}</div>
+                        <div className="py-2 text-gray-900 font-medium">
+                          {materiasBD.find(m => m.ID === form.Materia_ID)?.Nombre}
+                        </div>
                       ) : (
                         <select
-                          name="materia"
-                          value={form.materia}
-                          onChange={e => setForm(f => ({ ...f, materia: e.target.value }))}
-                          className={`w-full px-3 py-2 border ${errors.materia ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                          name="Materia_ID"
+                          value={form.Materia_ID}
+                          onChange={e => setForm(f => ({ ...f, Materia_ID: e.target.value }))}
+                          className={`w-full px-3 py-2 border ${errors.Materia_ID ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                          disabled={loading}
                         >
                           <option value="">Selecciona una materia</option>
-                          {materiasBD.map((m, idx) => (
-                            <option key={idx} value={m}>{m}</option>
+                          {materiasBD.map((m) => (
+                            <option key={m.ID} value={m.ID}>{m.Nombre}</option>
                           ))}
                         </select>
                       )}
-                      {errors.materia && <p className="text-xs text-red-600 mt-1">{errors.materia}</p>}
+                      {errors.Materia_ID && <p className="text-xs text-red-600 mt-1">{errors.Materia_ID}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Docente</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Docente(s)</label>
                       {modal.mode === 'detail' ? (
-                        <div className="py-2 text-gray-900 font-medium">{form.docente}</div>
+                        <div className="py-2 text-gray-900 font-medium">
+                          {form.docente_ids.map(id => docentesBD.find(d => d.ID === id)?.Nombre).join(', ')}
+                        </div>
                       ) : (
-                        <select
-                          name="docente"
-                          value={form.docente}
-                          onChange={e => setForm(f => ({ ...f, docente: e.target.value }))}
-                          className={`w-full px-3 py-2 border ${errors.docente ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500`}
-                        >
-                          <option value="">Selecciona un docente</option>
-                          {docentesBD.map((d, idx) => (
-                            <option key={idx} value={d}>{d}</option>
+                        <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2">
+                          {docentesBD.map((d) => (
+                            <label key={d.ID} className="flex items-center space-x-2 py-1 hover:bg-gray-50 px-2 rounded cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={form.docente_ids.includes(d.ID)}
+                                onChange={() => handleDocenteChange(d.ID)}
+                                className="w-4 h-4 text-blue-600"
+                                disabled={loading}
+                              />
+                              <span className="text-sm text-gray-700">{d.Nombre}</span>
+                            </label>
                           ))}
-                        </select>
+                        </div>
                       )}
-                      {errors.docente && <p className="text-xs text-red-600 mt-1">{errors.docente}</p>}
+                      {errors.docente_ids && <p className="text-xs text-red-600 mt-1">{errors.docente_ids}</p>}
                     </div>
                   </form>
 
@@ -327,16 +523,18 @@ export const Schedule = ({ user, setUser }) => {
                     <button
                       onClick={closeModal}
                       className="px-5 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      disabled={loading}
                     >
                       Cancelar
                     </button>
                     {modal.mode !== 'detail' && (
                       <button
                         onClick={handleSave}
-                        className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                        disabled={loading}
                       >
                         <Save className="h-4 w-4" />
-                        <span>Guardar</span>
+                        <span>{loading ? 'Guardando...' : 'Guardar'}</span>
                       </button>
                     )}
                   </div>

@@ -384,8 +384,8 @@ export const Schedule = ({ user, setUser }) => {
 
             {/* Modal para crear, editar, ver detalle */}
             {modal.open && (
-              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg relative">
+              <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)' }}>
+                <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg relative border border-blue-100">
                   <button
                     onClick={closeModal}
                     className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200"
@@ -408,7 +408,7 @@ export const Schedule = ({ user, setUser }) => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Horario</label>
                       {modal.mode === 'detail' ? (
                         <div className="py-2 text-gray-900 font-medium">
-                          {horariosBD.find(h => h.ID === form.Horario_ID)?.Hora_Inicio} - {horariosBD.find(h => h.ID === form.Horario_ID)?.Hora_Fin}
+                          {horariosBD.find(h => h.ID === parseInt(form.Horario_ID))?.Hora_Inicio} - {horariosBD.find(h => h.ID === parseInt(form.Horario_ID))?.Hora_Fin}
                         </div>
                       ) : (
                         <select
@@ -430,7 +430,7 @@ export const Schedule = ({ user, setUser }) => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Aula</label>
                       {modal.mode === 'detail' ? (
                         <div className="py-2 text-gray-900 font-medium">
-                          {aulasBD.find(a => a.ID === form.Aula_ID)?.Nombre}
+                          {aulasBD.find(a => a.ID === parseInt(form.Aula_ID))?.Nombre}
                         </div>
                       ) : (
                         <select
@@ -442,7 +442,9 @@ export const Schedule = ({ user, setUser }) => {
                         >
                           <option value="">Selecciona un aula</option>
                           {aulasBD.map((a) => (
-                            <option key={a.ID} value={a.ID}>{a.Nombre}</option>
+                            <option key={a.ID} value={a.ID}>
+                              {a.Nombre || a.Nro_Aula || a.nroAula || a.ID}
+                            </option>
                           ))}
                         </select>
                       )}

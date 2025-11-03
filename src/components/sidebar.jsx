@@ -4,16 +4,10 @@ import {
   ChevronLeft, 
   ChevronRight, 
   BarChart3, 
-  ShoppingCart, 
   Calendar, 
   User, 
-  ClipboardList, 
-  FileText, 
+  ClipboardList,  
   Table, 
-  FileIcon, 
-  MessageCircle, 
-  Headphones, 
-  Mail,
   Clock,
   Package
 } from 'lucide-react';
@@ -43,6 +37,15 @@ export const Sidebar = ({ user }) => {
       path: '/schedule',
       hasSubmenu: true
     },
+    // Solo admin puede ver docentes
+    ...(user?.role === 'admin' ? [
+      {
+        id: 'docentes',
+        label: 'Docentes',
+        icon: User,
+        path: '/docentes'
+      }
+    ] : []),
     {
       id: 'materias',
       label: 'Materias',

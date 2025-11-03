@@ -11,6 +11,7 @@ import { Materia } from './Pages/Materia';
 import { Horarios } from './Pages/Horarios';
 import { Grupos } from './Pages/Grupos';
 import { Aula } from './Pages/Aula';
+import { Docente } from './Pages/Docente';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -76,6 +77,10 @@ function App() {
           <Route 
             path="/aulas" 
             element={user?.role === 'admin' ? <Aula user={user} setUser={setUser} /> : <Navigate to="/login" />} 
+          />
+          <Route
+            path="/docentes"
+            element={user?.role === 'admin' ? <Docente user={user} setUser={setUser} /> : <Navigate to="/login" />}
           />
           <Route path="/" element={<Navigate to="/login" />} />
         </Routes>

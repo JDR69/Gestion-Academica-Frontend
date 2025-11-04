@@ -17,60 +17,26 @@ export const Sidebar = ({ user }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const menuItems = [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: BarChart3,
-      path: user?.role === 'admin' ? '/admin' : '/teacher'
-    },
-    {
-      id: 'profile',
-      label: 'User Profile',
-      icon: User,
-      path: '/perfil'
-    },
-    {
-      id: 'schedule',
-      label: 'Schedule',
-      icon: Calendar,
-      path: '/schedule',
-      hasSubmenu: true
-    },
-    // Solo admin puede ver docentes
-    ...(user?.role === 'admin' ? [
-      {
-        id: 'docentes',
-        label: 'Docentes',
-        icon: User,
-        path: '/docentes'
-      }
-    ] : []),
-    {
-      id: 'materias',
-      label: 'Materias',
-      icon: ClipboardList,
-      path: '/materias'
-    },
-    {
-      id: 'horarios',
-      label: 'Horarios',
-      icon: Clock,
-      path: '/horarios'
-    },
-    {
-      id: 'grupos',
-      label: 'Grupos',
-      icon: Table,
-      path: '/grupos'
-    },
-    {
-      id: 'aulas',
-      label: 'Aulas',
-      icon: Package,
-      path: '/aulas'
-    },
+  const dashboardItem = {
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: BarChart3,
+    path: user?.role === 'admin' ? '/admin' : '/teacher'
+  };
+
+  const adminMenu = [
+    dashboardItem,
+    { id: 'profile', label: 'User Profile', icon: User, path: '/perfil' },
+    { id: 'schedule', label: 'Schedule', icon: Calendar, path: '/schedule', hasSubmenu: true },
+    { id: 'docentes', label: 'Docentes', icon: User, path: '/docentes' },
+    { id: 'materias', label: 'Materias', icon: ClipboardList, path: '/materias' },
+    { id: 'horarios', label: 'Horarios', icon: Clock, path: '/horarios' },
+    { id: 'grupos', label: 'Grupos', icon: Table, path: '/grupos' },
+    { id: 'aulas', label: 'Aulas', icon: Package, path: '/aulas' },
   ];
+
+  // Para docentes (no admin), solo mostrar Dashboard
+  const menuItems = user?.role === 'admin' ? adminMenu : [dashboardItem];
 
   const supportItems = [
   ];

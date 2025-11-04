@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  baseURL: 'https://gestion-academica-backend-dl66.onrender.com/api', // Cambia la URL si tu backend está en otro puerto o dominio
+  //baseURL: 'https://gestion-academica-backend-dl66.onrender.com/api', // Cambia la URL si tu backend está en otro puerto o dominio
+  baseURL: 'http://localhost:3000/api', // Cambia la URL si tu backend está en otro puerto o dominio
   withCredentials: true,
 });
 
@@ -45,6 +46,9 @@ export const getDocentes = () => api.get('/docente');
 export const createDocente = (data) => api.post('/docente', data);
 export const updateDocente = (id, data) => api.put(`/docente/${id}`, data);
 export const deleteDocente = (id) => api.delete(`/docente/${id}`);
+
+// Horarios por Docente
+export const getHorariosByDocente = (docenteId) => api.get(`/docente/${docenteId}/horarios`);
 
 // Detalle Horario (Asignaciones)
 export const getDetalleHorarios = () => api.get('/detalle-horario');

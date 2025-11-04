@@ -9,7 +9,8 @@ import {
   ClipboardList,  
   Table, 
   Clock,
-  Package
+  Package,
+  CheckCircle
 } from 'lucide-react';
 
 export const Sidebar = ({ user }) => {
@@ -21,7 +22,7 @@ export const Sidebar = ({ user }) => {
     id: 'dashboard',
     label: 'Dashboard',
     icon: BarChart3,
-    path: user?.role === 'admin' ? '/admin' : '/teacher'
+    path: user?.role === 'admin' ? '/admin' : '/teacherDashboard'
   };
 
   const adminMenu = [
@@ -33,10 +34,18 @@ export const Sidebar = ({ user }) => {
     { id: 'horarios', label: 'Horarios', icon: Clock, path: '/horarios' },
     { id: 'grupos', label: 'Grupos', icon: Table, path: '/grupos' },
     { id: 'aulas', label: 'Aulas', icon: Package, path: '/aulas' },
+    // También disponibles para admin
+    { id: 'teacherDashboard', label: 'Teacher Dashboard', icon: BarChart3, path: '/teacherDashboard' },
+    { id: 'asistencia', label: 'Asistencia', icon: CheckCircle, path: '/asistencia' },
   ];
 
-  // Para docentes (no admin), solo mostrar Dashboard
-  const menuItems = user?.role === 'admin' ? adminMenu : [dashboardItem];
+  // Para docentes/usuarios normales (no admin), solo Teacher Dashboard y Asistencia
+  const teacherMenu = [
+    { id: 'teacherDashboard', label: 'Dashboard', icon: BarChart3, path: '/teacherDashboard' },
+    { id: 'asistencia', label: 'Asistencia', icon: CheckCircle, path: '/asistencia' },
+  ];
+
+  const menuItems = user?.role === 'admin' ? adminMenu : teacherMenu;
 
   const supportItems = [
   ];

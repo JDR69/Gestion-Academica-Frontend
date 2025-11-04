@@ -267,15 +267,7 @@ export const Schedule = ({ user, setUser }) => {
     }
   };
 
-  // Manejar selección múltiple de docentes
-  const handleDocenteChange = (docenteId) => {
-    const id = parseInt(docenteId);
-    if (form.docente_ids.includes(id)) {
-      setForm({ ...form, docente_ids: form.docente_ids.filter(d => d !== id) });
-    } else {
-      setForm({ ...form, docente_ids: [...form.docente_ids, id] });
-    }
-  };
+  // Selección múltiple de docentes se maneja directamente en el onChange del <select multiple>
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -499,20 +491,22 @@ export const Schedule = ({ user, setUser }) => {
                           {form.docente_ids.map(id => docentesBD.find(d => d.ID === id)?.Nombre).join(', ')}
                         </div>
                       ) : (
-                        <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-2">
+                        <select
+                          multiple
+                          name="docente_ids"
+                          value={form.docente_ids.map(String)}
+                          onChange={(e) => {
+                            const selected = Array.from(e.target.selectedOptions).map(o => parseInt(o.value));
+                            setForm({ ...form, docente_ids: selected });
+                          }}
+                          className={`w-full px-3 py-2 border ${errors.docente_ids ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                          disabled={loading}
+                          size={6}
+                        >
                           {docentesBD.map((d) => (
-                            <label key={d.ID} className="flex items-center space-x-2 py-1 hover:bg-gray-50 px-2 rounded cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={form.docente_ids.includes(d.ID)}
-                                onChange={() => handleDocenteChange(d.ID)}
-                                className="w-4 h-4 text-blue-600"
-                                disabled={loading}
-                              />
-                              <span className="text-sm text-gray-700">{d.Nombre}</span>
-                            </label>
+                            <option key={d.ID} value={d.ID}>{d.Nombre}</option>
                           ))}
-                        </div>
+                        </select>
                       )}
                       {errors.docente_ids && <p className="text-xs text-red-600 mt-1">{errors.docente_ids}</p>}
                     </div>

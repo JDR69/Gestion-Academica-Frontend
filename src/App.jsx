@@ -4,6 +4,7 @@ import { Login } from './Pages/Login';
 import { Register } from './Pages/Register';
 import { AdminDashboard } from './Pages/AdminDashboard';
 import { TeacherDashboard } from './Pages/TeacherDashboard';
+import Asistencia from './Pages/Asistencia';
 import { Perfil } from './Pages/Perfil';
 import { useEffect, useState } from 'react';
 import { Schedule } from './Pages/Schedule';
@@ -39,16 +40,18 @@ function App() {
                 ? <Login setUser={setUser} /> 
                 : user.role === 'admin' 
                   ? <Navigate to="/admin" /> 
-                  : <Navigate to="/teacher" />
+                  : <Navigate to="/teacherDashboard" />
             } 
           />
           <Route 
             path="/admin" 
             element={user?.role === 'admin' ? <AdminDashboard user={user} setUser={setUser} /> : <Navigate to="/login" />} 
           />
+          {/* Alias antiguo -> redirigir al nuevo dashboard de docente */}
+          <Route path="/teacher" element={<Navigate to="/teacherDashboard" />} />
           <Route 
-            path="/teacher" 
-            element={user?.role === 'teacher' ? <TeacherDashboard user={user} setUser={setUser} /> : <Navigate to="/login" />} 
+            path="/teacherDashboard" 
+            element={user ? <TeacherDashboard user={user} setUser={setUser} /> : <Navigate to="/login" />} 
           />
           <Route 
             path="/register" 
@@ -83,6 +86,11 @@ function App() {
             element={user?.role === 'admin' ? <Docente user={user} setUser={setUser} /> : <Navigate to="/login" />}
           />
           <Route path="/" element={<Navigate to="/login" />} />
+          {/* Asistencia visible para admin y no-admin autenticados */}
+          <Route 
+            path="/asistencia" 
+            element={user ? <Asistencia user={user} setUser={setUser} /> : <Navigate to="/login" />} 
+          />
         </Routes>
       </div>
     </Router>

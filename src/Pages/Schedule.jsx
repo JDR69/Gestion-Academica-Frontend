@@ -213,8 +213,7 @@ export const Schedule = ({ user, setUser }) => {
         for (const docenteId of form.docente_ids) {
           await createDetalleDocente({
             ID_Docente: parseInt(docenteId),
-            ID_Detalle_Horario: modal.horario.ID,
-            ID_Asistencia: 1 // Valor por defecto, ajustar según tu lógica
+            ID_Detalle_Horario: modal.horario.ID
           });
         }
       } else {
@@ -226,8 +225,7 @@ export const Schedule = ({ user, setUser }) => {
         for (const docenteId of form.docente_ids) {
           await createDetalleDocente({
             ID_Docente: parseInt(docenteId),
-            ID_Detalle_Horario: nuevoDetalleHorarioId,
-            ID_Asistencia: 1 // Valor por defecto, ajustar según tu lógica
+            ID_Detalle_Horario: nuevoDetalleHorarioId
           });
         }
       }

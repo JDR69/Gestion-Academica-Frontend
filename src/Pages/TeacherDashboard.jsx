@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { Sidebar } from '../components/sidebar';
 import { Navbar } from '../components/navbar';
 import { BookOpen, Clock, CheckCircle } from 'lucide-react';
-import { getDocentes, getHorariosByDocente } from '../api/axios';
+import { getDocentes, getHorariosByDocente, getDetalleDocentes } from '../api/axios';
 
 export const TeacherDashboard = ({ user, setUser }) => {
   const [horarios, setHorarios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [detalleDocentes, setDetalleDocentes] = useState([]);
 
   const resolveDocenteId = async () => {
     // Preferimos un docenteId explícito si viene del login
@@ -31,9 +32,14 @@ export const TeacherDashboard = ({ user, setUser }) => {
       try {
         const docenteId = await resolveDocenteId();
         if (!docenteId) throw new Error('No se pudo determinar el docente logueado.');
-        const { data } = await getHorariosByDocente(docenteId);
+        const [horariosRes, detalleRes] = await Promise.all([
+          getHorariosByDocente(docenteId),
+          getDetalleDocentes(),
+        ]);
         if (!active) return;
-        setHorarios(data?.horarios || []);
+        setHorarios(horariosRes?.data?.horarios || []);
+        const soloMios = (detalleRes?.data || []).filter(dd => dd.ID_Docente === docenteId);
+        setDetalleDocentes(soloMios);
       } catch (err) {
         if (!active) return;
         setError(err?.message || 'Error cargando horarios');
@@ -45,12 +51,17 @@ export const TeacherDashboard = ({ user, setUser }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.docenteId, user?.email]);
 
-  const myCourses = horarios.map((h, idx) => ({
-    id: h.detalle_horario_id ?? idx,
-    name: `${h.materia ?? 'Materia'} · ${h.grupo ?? 'Grupo'}`,
-    hora: h.hora_inicio && h.hora_fin ? `${h.hora_inicio} - ${h.hora_fin}` : undefined,
-    aula: h.aula ? `Facultad ${h.aula.nro_facultad} • Aula ${h.aula.nro_aula}` : undefined,
-  }));
+  const myCourses = horarios.map((h, idx) => {
+    const dd = detalleDocentes.find(x => x.ID_Detalle_Horario === h.detalle_horario_id);
+    const estado = dd?.asistencia?.Descripcion || 'Asignado';
+    return {
+      id: h.detalle_horario_id ?? idx,
+      name: `${h.materia ?? 'Materia'} · ${h.grupo ?? 'Grupo'}`,
+      hora: h.hora_inicio && h.hora_fin ? `${h.hora_inicio} - ${h.hora_fin}` : undefined,
+      aula: h.aula ? `Facultad ${h.aula.nro_facultad} • Aula ${h.aula.nro_aula}` : undefined,
+      estado,
+    };
+  });
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -98,6 +109,15 @@ export const TeacherDashboard = ({ user, setUser }) => {
                         </div>
                         <div className="flex items-center space-x-2">
                           <CheckCircle className="w-5 h-5 text-green-600" />
+                          <span
+                            className={`text-xs font-medium px-2 py-1 rounded-full ${
+                              course.estado === 'Presente' ? 'bg-green-100 text-green-700' :
+                              course.estado === 'Ausente' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {course.estado}
+                          </span>
                         </div>
                       </div>
                       {course.hora && (

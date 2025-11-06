@@ -53,15 +53,17 @@ export const getHorariosByDocente = (docenteId) =>
   api.get(`/docente/${docenteId}/horarios`);
 
 // Marcar Asistencia de Docente
+// Marcar asistencia: el backend espera las claves exactas
+// { ID_Docente, ID_Detalle_Horario, ID_Asistencia }
 export const marcarAsistenciaDocente = (
   docenteId,
-  materiaId,
-  detalleHorarioId
+  detalleHorarioId,
+  asistenciaId
 ) =>
   api.post(`/detalle-horario/marcar-asistencia`, {
-    docenteId,
-    materiaId,
-    detalleHorarioId,
+    ID_Docente: Number(docenteId),
+    ID_Detalle_Horario: Number(detalleHorarioId),
+    ID_Asistencia: Number(asistenciaId),
   });
 
 // Detalle Horario (Asignaciones)

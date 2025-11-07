@@ -5,16 +5,29 @@ import { BookOpen, Clock, CheckCircle } from 'lucide-react';
 import { getDocentes, getHorariosByDocente, getDetalleDocentes } from '../api/axios';
 
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 // --- Export helpers ---
 function exportToPDF(courses) {
-  const doc = new jsPDF();
-  doc.autoTable({
-    head: [['Materia', 'Horario', 'Aula', 'Estado']],
-    body: courses.map(c => [c.name, c.hora || '', c.aula || '', c.estado]),
-  });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  // Titulo
+  doc.setFontSize(14);
+  doc.text('Reporte de Asistencia - Docente', 40, 40);
+  // Tabla
+  try {
+    autoTable(doc, {
+      startY: 60,
+      head: [['Materia', 'Horario', 'Aula', 'Estado']],
+      body: courses.map(c => [c.name, c.hora || '', c.aula || '', c.estado]),
+      styles: { fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: [37, 99, 235] },
+      alternateRowStyles: { fillColor: [245, 247, 255] },
+      columnStyles: { 0: { cellWidth: 260 }, 1: { cellWidth: 120 }, 2: { cellWidth: 140 }, 3: { cellWidth: 80 } },
+    });
+  } catch (e) {
+    console.error('Error generando PDF:', e);
+  }
   doc.save('asistencia_docente.pdf');
 }
 

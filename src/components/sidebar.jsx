@@ -35,13 +35,15 @@ export const Sidebar = ({ user }) => {
     { id: 'grupos', label: 'Grupos', icon: Table, path: '/grupos' },
     { id: 'aulas', label: 'Aulas', icon: Package, path: '/aulas' },
     // También disponibles para admin
-    { id: 'teacherDashboard', label: 'Teacher Dashboard', icon: BarChart3, path: '/teacherDashboard' },
+  // Solo mostrar TeacherDashboard si no es admin
+  ...((!user?.role || user?.role !== 'admin') ? [{ id: 'teacherDashboard', label: 'Teacher Dashboard', icon: BarChart3, path: '/teacherDashboard' }] : []),
     { id: 'asistencia', label: 'Asistencia', icon: CheckCircle, path: '/asistencia' },
   ];
 
   // Para docentes/usuarios normales (no admin), solo Teacher Dashboard y Asistencia
   const teacherMenu = [
-    { id: 'teacherDashboard', label: 'Dashboard', icon: BarChart3, path: '/teacherDashboard' },
+  // Solo mostrar Dashboard si no es admin
+  ...((!user?.role || user?.role !== 'admin') ? [{ id: 'teacherDashboard', label: 'Dashboard', icon: BarChart3, path: '/teacherDashboard' }] : []),
     // { id: 'asistencia', label: 'Asistencia', icon: CheckCircle, path: '/asistencia' },
   ];
 

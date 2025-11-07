@@ -63,23 +63,25 @@ export const TeacherDashboard = ({ user, setUser }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [detalleDocentes, setDetalleDocentes] = useState([]);
-
-  const resolveDocenteId = async () => {
-    // Preferimos un docenteId explícito si viene del login
-    if (user?.docenteId) return user.docenteId;
-    // Para tu modelo: cualquier no-admin es docente; buscamos por correo en la tabla Docente
-    if (user?.email) {
-      try {
-        const { data } = await getDocentes();
-        const match = (data || []).find(d => d.Correo === user.email);
-        if (match?.ID) return match.ID;
-      } catch {}
-    }
-    return null;
-  };
+  const isAdmin = user?.role === 'admin' || user?.isAdmin;
 
   useEffect(() => {
+    if (isAdmin) {
+      window.location.replace('/');
+      return;
+    }
     let active = true;
+    const resolveDocenteId = async () => {
+      if (user?.docenteId) return user.docenteId;
+      if (user?.email) {
+        try {
+          const { data } = await getDocentes();
+          const match = (data || []).find(d => d.Correo === user.email);
+          if (match?.ID) return match.ID;
+        } catch {}
+      }
+      return null;
+    };
     (async () => {
       setLoading(true);
       setError(null);
@@ -103,8 +105,11 @@ export const TeacherDashboard = ({ user, setUser }) => {
     })();
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.docenteId, user?.email]);
+  }, [user?.docenteId, user?.email, isAdmin]);
 
+  // Eliminado: declaración duplicada de myCourses
+
+  if (isAdmin) return null;
   const myCourses = horarios.map((h, idx) => {
     const dd = detalleDocentes.find(x => x.ID_Detalle_Horario === h.detalle_horario_id);
     const estado = dd?.asistencia?.Descripcion || 'Asignado';

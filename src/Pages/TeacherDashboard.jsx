@@ -4,6 +4,46 @@ import { Navbar } from '../components/navbar';
 import { BookOpen, Clock, CheckCircle } from 'lucide-react';
 import { getDocentes, getHorariosByDocente, getDetalleDocentes } from '../api/axios';
 
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+// --- Export helpers ---
+function exportToPDF(courses) {
+  const doc = new jsPDF();
+  doc.autoTable({
+    head: [['Materia', 'Horario', 'Aula', 'Estado']],
+    body: courses.map(c => [c.name, c.hora || '', c.aula || '', c.estado]),
+  });
+  doc.save('asistencia_docente.pdf');
+}
+
+function exportToExcel(courses) {
+  const header = ['Materia', 'Horario', 'Aula', 'Estado'];
+  const rows = courses.map(c => [c.name, c.hora || '', c.aula || '', c.estado]);
+  let csv = header.join(',') + '\n';
+  csv += rows.map(r => r.map(x => `"${x}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'asistencia_docente.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function exportToHTML(courses) {
+  const header = ['Materia', 'Horario', 'Aula', 'Estado'];
+  const rows = courses.map(c => [c.name, c.hora || '', c.aula || '', c.estado]);
+  let html = '<table border="1" style="border-collapse:collapse;width:100%"><thead><tr>';
+  html += header.map(h => `<th>${h}</th>`).join('');
+  html += '</tr></thead><tbody>';
+  html += rows.map(r => `<tr>${r.map(x => `<td>${x}</td>`).join('')}</tr>`).join('');
+  html += '</tbody></table>';
+  const win = window.open('', '_blank');
+  win.document.write(`<html><head><title>Reporte Asistencia</title></head><body>${html}</body></html>`);
+  win.document.close();
+}
+
 export const TeacherDashboard = ({ user, setUser }) => {
   const [horarios, setHorarios] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -76,6 +116,28 @@ export const TeacherDashboard = ({ user, setUser }) => {
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              {/* Botones de exportación */}
+              <div className="flex gap-3 p-6 border-b border-gray-200">
+                <button
+                  className="bg-blue-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-blue-700"
+                  onClick={() => exportToPDF(myCourses)}
+                >
+                  Exportar PDF
+                </button>
+                <button
+                  className="bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700"
+                  onClick={() => exportToExcel(myCourses)}
+                >
+                  Exportar Excel
+                </button>
+                <button
+                  className="bg-gray-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-gray-700"
+                  onClick={() => exportToHTML(myCourses)}
+                >
+                  Exportar HTML
+                </button>
+              </div>
+              
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-semibold text-gray-900">Mis Horarios</h2>

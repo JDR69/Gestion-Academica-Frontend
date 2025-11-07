@@ -42,10 +42,14 @@ export const Sidebar = ({ user }) => {
   // Para docentes/usuarios normales (no admin), solo Teacher Dashboard y Asistencia
   const teacherMenu = [
     { id: 'teacherDashboard', label: 'Dashboard', icon: BarChart3, path: '/teacherDashboard' },
-    { id: 'asistencia', label: 'Asistencia', icon: CheckCircle, path: '/asistencia' },
+    // { id: 'asistencia', label: 'Asistencia', icon: CheckCircle, path: '/asistencia' },
   ];
 
   const menuItems = user?.role === 'admin' ? adminMenu : teacherMenu;
+  // Para docentes, quitamos la ruta de Asistencia
+  const menuItemsFiltered = user?.role === 'admin'
+    ? adminMenu
+    : teacherMenu.filter(item => item.id !== 'asistencia');
 
   const supportItems = [
   ];
@@ -119,7 +123,7 @@ export const Sidebar = ({ user }) => {
       <div className="flex-1 overflow-y-auto py-4">
         {/* Main Menu Items */}
         <div className="space-y-1">
-          {menuItems.map((item) => (
+          {menuItemsFiltered.map((item) => (
             <MenuItem
               key={item.id}
               item={item}
@@ -129,24 +133,7 @@ export const Sidebar = ({ user }) => {
         </div>
 
         {/* Support Section */}
-        {!isCollapsed && (
-          <div className="mt-8">
-            <div className="px-6 py-2">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                SUPPORT
-              </span>
-            </div>
-            <div className="space-y-1">
-              {supportItems.map((item) => (
-                <MenuItem
-                  key={item.id}
-                  item={item}
-                  isActive={location.pathname === item.path}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+       
       </div>
 
       {/* Bottom Items */}

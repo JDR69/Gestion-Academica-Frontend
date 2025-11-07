@@ -13,6 +13,7 @@ import {
   deleteDetalleHorario,
   getHorarios,
   getAulas,
+  getAulasDisponibles,
   getGrupos,
   getMaterias,
   getDocentes,
@@ -31,6 +32,7 @@ export const Schedule = ({ user, setUser }) => {
   // Datos de catálogos
   const [horariosBD, setHorariosBD] = useState([]);
   const [aulasBD, setAulasBD] = useState([]);
+  const [aulasDisponibles, setAulasDisponibles] = useState([]);
   const [gruposBD, setGruposBD] = useState([]);
   const [materiasBD, setMateriasBD] = useState([]);
   const [docentesBD, setDocentesBD] = useState([]);
@@ -56,6 +58,8 @@ export const Schedule = ({ user, setUser }) => {
       
       setHorariosBD(horariosRes.data);
       setAulasBD(aulasRes.data);
+  // inicialmente mostrar todas las aulas como disponibles
+  setAulasDisponibles(aulasRes.data);
       setGruposBD(gruposRes.data);
       setMateriasBD(materiasRes.data);
       setDocentesBD(docentesRes.data);
@@ -64,6 +68,31 @@ export const Schedule = ({ user, setUser }) => {
     } catch (error) {
       console.error('Error al cargar datos:', error);
       alert('Error al cargar los datos del servidor');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cuando se selecciona un horario en el formulario, pedir aulas disponibles
+  const handleHorarioChange = async (horarioId) => {
+    setForm(f => ({ ...f, Horario_ID: horarioId }));
+    if (!horarioId) {
+      setAulasDisponibles(aulasBD);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await getAulasDisponibles(Number(horarioId));
+      // Si la API devuelve un array, usarlo; si falla, fallback a todas
+      if (Array.isArray(res.data)) {
+        setAulasDisponibles(res.data);
+      } else {
+        setAulasDisponibles(aulasBD);
+      }
+    } catch (err) {
+      console.error('No se pudo obtener aulas disponibles, fallback a todas:', err);
+      setAulasDisponibles(aulasBD);
     } finally {
       setLoading(false);
     }
@@ -173,8 +202,30 @@ export const Schedule = ({ user, setUser }) => {
         Materia_ID: horario.Materia_ID,
         docente_ids: docentesAsignados
       });
+
+      // Cargar aulas disponibles para ese horario y asegurarse de incluir el aula actual
+      (async () => {
+        try {
+          setLoading(true);
+          const res = await getAulasDisponibles(Number(horario.Horario_ID));
+          let list = Array.isArray(res.data) ? res.data : aulasBD.slice();
+          // Si el aula actual no está en la lista (porque está marcada como ocupada), agregarla para que se pueda ver/seleccionar
+          if (!list.find(a => a.ID === horario.Aula_ID)) {
+            const current = aulasBD.find(a => a.ID === horario.Aula_ID);
+            if (current) list = [current, ...list];
+          }
+          setAulasDisponibles(list);
+        } catch (err) {
+          console.error('Error cargando aulas disponibles al abrir modal:', err);
+          setAulasDisponibles(aulasBD);
+        } finally {
+          setLoading(false);
+        }
+      })();
     } else {
       setForm({ Horario_ID: '', Aula_ID: '', Grupo_ID: '', Materia_ID: '', docente_ids: [] });
+      // nuevo: usar todas las aulas inicialmente
+      setAulasDisponibles(aulasBD);
     }
   };
 
@@ -418,7 +469,7 @@ export const Schedule = ({ user, setUser }) => {
                         <select
                           name="Horario_ID"
                           value={form.Horario_ID}
-                          onChange={e => setForm(f => ({ ...f, Horario_ID: e.target.value }))}
+                          onChange={e => handleHorarioChange(e.target.value)}
                           className={`w-full px-3 py-2 border ${errors.Horario_ID ? 'border-red-300' : 'border-gray-300'} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
                           disabled={loading}
                         >
@@ -457,7 +508,7 @@ export const Schedule = ({ user, setUser }) => {
                           disabled={loading}
                         >
                           <option value="">Selecciona un aula</option>
-                          {aulasBD.map((a) => (
+                          {(aulasDisponibles && aulasDisponibles.length > 0 ? aulasDisponibles : aulasBD).map((a) => (
                             <option key={a.ID} value={a.ID}>
                               {a.Nombre || a.Nro_Aula || a.nroAula || a.ID}
                             </option>

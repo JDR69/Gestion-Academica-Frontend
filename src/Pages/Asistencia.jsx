@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Sidebar } from '../components/sidebar';
 import { Navbar } from '../components/navbar';
-import { BookOpen, Clock, CheckCircle, Eye, EyeOff } from 'lucide-react';
-import { getDocentes, getHorariosByDocente, getDetalleDocentes, getAsistencias, getDetalleHorarios, marcarAsistenciaDocente } from '../api/axios';
+import { Eye, EyeOff, Edit3, Trash2, X } from 'lucide-react';
+import { getDocentes, getDetalleHorarios, getAsistencias, marcarAsistenciaDocente, updateAsistencia, deleteAsistencia } from '../api/axios';
 
 function Asistencia({ user: userProp, setUser: setUserProp }) {
   // Rehidratar usuario si no viene por props
@@ -11,10 +11,6 @@ function Asistencia({ user: userProp, setUser: setUserProp }) {
     if (userProp) setUser(userProp);
   }, [userProp]);
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [horarios, setHorarios] = useState([]);
-  const [detalleDocentes, setDetalleDocentes] = useState([]);
   const [mostrarAsistencia, setMostrarAsistencia] = useState(true);
 
   // Para el formulario de marcar asistencia (solo admin)
@@ -26,75 +22,81 @@ function Asistencia({ user: userProp, setUser: setUserProp }) {
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
 
-  const resolveDocenteId = async () => {
-    if (user?.docenteId) return user.docenteId;
-    if (user?.email) {
-      try {
-        const { data } = await getDocentes();
-        const match = (data || []).find(d => d.Correo === user.email);
-        if (match?.ID) return match.ID;
-      } catch(e) {
-        console.error('Error buscando docente por email:', e);
-      }
+  // Para la tabla de asistencias (solo admin)
+  const [asistencias, setAsistencias] = useState([]);
+  const [asistenciasLoading, setAsistenciasLoading] = useState(false);
+  const [modalAsistencia, setModalAsistencia] = useState({ open: false, mode: '', asistencia: null });
+  const [editForm, setEditForm] = useState({ Descripcion: '' });
+
+  // Funciones para gestionar asistencias
+  const fetchAsistencias = useCallback(async () => {
+    if (user?.role !== 'admin') return;
+    setAsistenciasLoading(true);
+    try {
+      const res = await getAsistencias();
+      setAsistencias(res.data || []);
+    } catch (err) {
+      console.error('Error al cargar asistencias:', err);
+    } finally {
+      setAsistenciasLoading(false);
     }
-    return null;
+  }, [user?.role]);
+
+  const handleDeleteAsistencia = async (id) => {
+    if (!window.confirm('¿Seguro que deseas eliminar esta asistencia?')) return;
+    try {
+      await deleteAsistencia(id);
+      await fetchAsistencias();
+    } catch (err) {
+      alert('Error al eliminar asistencia: ' + (err?.response?.data?.message || err.message));
+    }
   };
 
+  const openModal = (mode, asistencia = null) => {
+    setModalAsistencia({ open: true, mode, asistencia });
+    if (asistencia && mode === 'edit') {
+      setEditForm({ Descripcion: asistencia.Descripcion });
+    } else {
+      setEditForm({ Descripcion: '' });
+    }
+  };
+
+  const closeModal = () => {
+    setModalAsistencia({ open: false, mode: '', asistencia: null });
+    setEditForm({ Descripcion: '' });
+  };
+
+  const handleUpdateAsistencia = async () => {
+    try {
+      await updateAsistencia(modalAsistencia.asistencia.ID, editForm);
+      await fetchAsistencias();
+      closeModal();
+    } catch (err) {
+      alert('Error al actualizar asistencia: ' + (err?.response?.data?.message || err.message));
+    }
+  };
+
+  // Cargar datos iniciales para admin
   useEffect(() => {
-    let active = true;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        if (user?.role === 'admin') {
-          // Admin: cargar todos los docentes, detalle horarios y asistencias
+    if (user?.role === 'admin') {
+      const loadInitialData = async () => {
+        try {
           const [docentesRes, detalleHorariosRes, asistenciasRes] = await Promise.all([
             getDocentes(),
             getDetalleHorarios(),
             getAsistencias(),
           ]);
-          if (!active) return;
           setDocentesAll(docentesRes?.data || []);
           setDetalleHorariosAll(detalleHorariosRes?.data || []);
           setAsistenciasAll(asistenciasRes?.data || []);
-        } else {
-          // Docente: solo sus datos
-          const docenteId = await resolveDocenteId();
-          if (!docenteId) throw new Error('No se pudo determinar el docente logueado.');
-          const [horariosRes, detalleRes] = await Promise.all([
-            getHorariosByDocente(docenteId),
-            getDetalleDocentes(),
-          ]);
-          if (!active) return;
-          setHorarios(horariosRes?.data?.horarios || []);
-          const soloMios = (detalleRes?.data || []).filter(dd => dd.ID_Docente === docenteId);
-          setDetalleDocentes(soloMios);
+          await fetchAsistencias();
+        } catch (error) {
+          console.error('Error cargando datos iniciales:', error);
         }
-      } catch (err) {
-        if (!active) return;
-        setError(err?.message || 'Error cargando asistencia');
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => { active = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.docenteId, user?.email, user?.role]);
-
-  const cards = useMemo(() => {
-    return (horarios || []).map((h, idx) => {
-      // Buscar estado de asistencia para el detalle_horario actual
-      const dd = detalleDocentes.find(x => x.ID_Detalle_Horario === h.detalle_horario_id);
-      const estado = dd?.asistencia?.Descripcion || 'Asignado';
-      return {
-        id: h.detalle_horario_id ?? idx,
-        name: `${h.materia ?? 'Materia'} · ${h.grupo ?? 'Grupo'}`,
-        hora: h.hora_inicio && h.hora_fin ? `${h.hora_inicio} - ${h.hora_fin}` : undefined,
-        aula: h.aula ? `Facultad ${h.aula.nro_facultad} • Aula ${h.aula.nro_aula}` : undefined,
-        estado,
       };
-    });
-  }, [horarios, detalleDocentes]);
+      loadInitialData();
+    }
+  }, [user?.role, fetchAsistencias]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -153,6 +155,8 @@ function Asistencia({ user: userProp, setUser: setUserProp }) {
                       );
                       setFormSuccess('Asistencia marcada correctamente');
                       setForm({ docenteId: '', detalleHorarioId: '', asistenciaId: '' });
+                      // Recargar asistencias después de marcar
+                      await fetchAsistencias();
                     } catch (err) {
                       setFormError('Error al marcar asistencia: ' + (err?.response?.data?.message || err.message));
                     } finally {
@@ -219,66 +223,180 @@ function Asistencia({ user: userProp, setUser: setUserProp }) {
               </div>
             )}
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-gray-900">Mis Materias</h2>
-                  <div className="text-sm text-gray-500">
-                    {loading ? 'Cargando…' : error ? (
-                      <span className="text-red-600">{error}</span>
-                    ) : (
-                      <span>{cards.length} asignaciones</span>
-                    )}
+            {/* Tabla de asistencias (solo admin) */}
+            {user?.role === 'admin' && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">Todas las Asistencias</h2>
+                  <button 
+                    onClick={fetchAsistencias}
+                    className="text-blue-600 hover:text-blue-800"
+                    disabled={asistenciasLoading}
+                  >
+                    {asistenciasLoading ? 'Cargando...' : 'Actualizar'}
+                  </button>
+                </div>
+                
+                {asistenciasLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-gray-500 text-lg">Cargando asistencias...</div>
                   </div>
-                </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                      <thead className="bg-linear-to-r from-blue-600 to-blue-700 text-white">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-sm font-semibold rounded-tl-xl">ID</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold">Tipo de Asistencia</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold">Docentes Registrados</th>
+                          <th className="px-6 py-4 text-center text-sm font-semibold rounded-tr-xl">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {asistencias.map((a, index) => (
+                          <tr key={a.ID} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors duration-200`}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                #{a.ID}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-semibold text-gray-900">{a.Descripcion}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {a.detalle_docentes && a.detalle_docentes.length > 0 ? (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                  {a.detalle_docentes.length} docente{a.detalle_docentes.length !== 1 ? 's' : ''}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
+                                  Sin registros
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button 
+                                  onClick={() => openModal('detail', a)}
+                                  className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors duration-200"
+                                  title="Ver detalle"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => openModal('edit', a)}
+                                  className="p-2 rounded-full bg-yellow-100 text-yellow-600 hover:bg-yellow-200 transition-colors duration-200"
+                                  title="Editar"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteAsistencia(a.ID)}
+                                  className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors duration-200"
+                                  title="Eliminar"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  {cards.length === 0 && !loading && !error && (
-                    <div className="text-sm text-gray-500">No tienes materias asignadas.</div>
-                  )}
-                  {cards.map((course) => (
-                    <div key={course.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <BookOpen className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{course.name}</h3>
-                            {course.aula && (
-                              <p className="text-sm text-gray-600">{course.aula}</p>
-                            )}
-                          </div>
-                        </div>
+            )}
 
-                        {mostrarAsistencia && (
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5 text-green-600" />
-                            <span
-                              className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                course.estado === 'Presente' ? 'bg-green-100 text-green-700' :
-                                course.estado === 'Ausente' ? 'bg-red-100 text-red-700' :
-                                'bg-gray-100 text-gray-700'
-                              }`}
-                            >
-                              {course.estado}
-                            </span>
-                          </div>
-                        )}
+            {/* Modal para ver/editar asistencia */}
+            {modalAsistencia.open && (
+              <div className="fixed inset-0 bg-gray-900 bg-opacity-25 backdrop-blur-sm flex items-center justify-center z-50">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg border border-gray-200">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      {modalAsistencia.mode === 'detail' ? 'Detalle de Asistencia' : 'Editar Asistencia'}
+                    </h3>
+                    <button 
+                      onClick={closeModal} 
+                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                      title="Cerrar"
+                    >
+                      <X className="w-6 h-6 text-gray-500" />
+                    </button>
+                  </div>
+
+                  {modalAsistencia.mode === 'detail' ? (
+                    <div className="space-y-6">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <label className="block text-sm font-semibold text-gray-600 mb-1">Identificador</label>
+                        <div className="text-lg font-medium text-blue-600">#{modalAsistencia.asistencia?.ID}</div>
                       </div>
-
-                      {course.hora && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>{course.hora}</span>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <label className="block text-sm font-semibold text-gray-600 mb-1">Tipo de Asistencia</label>
+                        <div className="text-lg font-medium text-gray-900">{modalAsistencia.asistencia?.Descripcion}</div>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <label className="block text-sm font-semibold text-gray-600 mb-2">Docentes Registrados</label>
+                        <div className="text-gray-900">
+                          {modalAsistencia.asistencia?.detalle_docentes?.length > 0 ? (
+                            <div className="space-y-3">
+                              {modalAsistencia.asistencia.detalle_docentes.map((dd, index) => (
+                                <div key={dd.ID} className="bg-white rounded-lg p-3 border border-gray-200">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <span className="text-sm font-medium text-gray-500">Registro #{index + 1}</span>
+                                      <div className="mt-1">
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2">
+                                          Docente: {dd.ID_Docente}
+                                        </span>
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                          Horario: {dd.ID_Detalle_Horario}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4">
+                              <div className="text-gray-400 text-sm italic">No hay docentes registrados para esta asistencia</div>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <label className="block text-sm font-semibold text-gray-600 mb-2">Tipo de Asistencia</label>
+                        <input
+                          type="text"
+                          value={editForm.Descripcion}
+                          onChange={e => setEditForm({ ...editForm, Descripcion: e.target.value })}
+                          className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-lg focus:border-blue-500 focus:outline-none transition-colors"
+                          placeholder="Ej: Presente, Ausente, Tardanza..."
+                        />
+                      </div>
+                      <div className="flex gap-3 justify-end pt-4">
+                        <button 
+                          onClick={closeModal}
+                          className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                        <button 
+                          onClick={handleUpdateAsistencia}
+                          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-lg"
+                        >
+                          Guardar Cambios
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </main>
       </div>

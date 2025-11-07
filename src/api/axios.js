@@ -29,6 +29,9 @@ export const getAulas = () => api.get("/aula");
 export const createAula = (data) => api.post("/aula", data);
 export const updateAula = (id, data) => api.put(`/aula/${id}`, data);
 export const deleteAula = (id) => api.delete(`/aula/${id}`);
+// Aulas disponibles para un horario (query param: horario_id)
+export const getAulasDisponibles = (horarioId) =>
+  api.get(`/aulas/disponibles?horario_id=${horarioId}`);
 
 // Usuarios (ejemplo para login y registro)
 export const login = (data) => api.post("/login", data);
@@ -38,8 +41,8 @@ export const getUser = () => api.get("/user");
 // Asistencia
 export const getAsistencias = () => api.get("/asistencia");
 export const createAsistencia = (data) => api.post("/asistencia", data);
-export const updateAsistencia = (id, data) =>
-  api.put(`/asistencias/${id}`, data);
+export const getAsistenciaById = (id) => api.get(`/asistencia/${id}`);
+export const updateAsistencia = (id, data) => api.put(`/asistencia/${id}`, data);
 export const deleteAsistencia = (id) => api.delete(`/asistencia/${id}`);
 
 // Docentes

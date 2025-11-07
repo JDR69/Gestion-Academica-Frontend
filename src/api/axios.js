@@ -55,13 +55,13 @@ export const getHorariosByDocente = (docenteId) =>
 // Marcar Asistencia de Docente
 export const marcarAsistenciaDocente = (
   docenteId,
-  materiaId,
+  asistenciaId,
   detalleHorarioId
 ) =>
   api.post(`/detalle-horario/marcar-asistencia`, {
-    docenteId,
-    materiaId,
-    detalleHorarioId,
+    ID_Docente: docenteId,
+    ID_Detalle_Horario: detalleHorarioId,
+    ID_Asistencia: asistenciaId,
   });
 
 // Detalle Horario (Asignaciones)

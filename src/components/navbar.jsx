@@ -70,18 +70,7 @@ export const Navbar = ({ user, setUser }) => {
   return (
     <nav className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
-        {/* Search Bar */}
-
-        {/* Right Side Icons */}
         <div className="flex items-center space-x-4">
-          {/* Dark Mode Toggle */}
-
-          {/* Messages */}
-
-          {/* Notifications */}
-
-
-          {/* User Profile Dropdown */}
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}

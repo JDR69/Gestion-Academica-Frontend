@@ -3,17 +3,16 @@ import { Sidebar } from '../components/sidebar';
 import { Navbar } from '../components/navbar';
 import { BookOpen, Clock, CheckCircle } from 'lucide-react';
 import { getDocentes, getHorariosByDocente, getDetalleDocentes } from '../api/axios';
-
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-
+// asdf
 // --- Export helpers ---
 function exportToPDF(courses) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   // Titulo
   doc.setFontSize(14);
-  doc.text('Reporte de Asistencia - Docente', 40, 40);
+  doc.text('Reporte de Asistencia - Docente', 30, 30);
   // Tabla
   try {
     autoTable(doc, {
@@ -35,7 +34,6 @@ function exportToXLSX(courses) {
   const header = ['Materia', 'Horario', 'Aula', 'Estado'];
   const rows = courses.map(c => [c.name, c.hora || '', c.aula || '', c.estado]);
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
-  // Ajuste de ancho de columnas
   ws['!cols'] = [
     { wch: 40 },
     { wch: 20 },
@@ -144,7 +142,7 @@ export const TeacherDashboard = ({ user, setUser }) => {
                   className="bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700"
                   onClick={() => exportToXLSX(myCourses)}
                 >
-                  Exportar Excel (.xlsx)
+                  Exportar Excel
                 </button>
                 <button
                   className="bg-gray-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-gray-700"

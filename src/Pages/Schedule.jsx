@@ -83,11 +83,25 @@ export const Schedule = ({ user, setUser }) => {
     const aula = aulasBD.find(a => a.ID === h.Aula_ID);
     const grupo = gruposBD.find(g => g.ID === h.Grupo_ID);
     const materia = materiasBD.find(m => m.ID === h.Materia_ID);
-    
+
+    // Mostrar número de aula y facultad si existen, si no, mostrar Nombre, si no, N/A
+    let aulaDisplay = 'N/A';
+    if (aula) {
+      if (aula.Nro_Facultad && aula.Nro_Aula) {
+        aulaDisplay = `Facultad ${aula.Nro_Facultad} - Aula ${aula.Nro_Aula}`;
+      } else if (aula.Nro_Aula) {
+        aulaDisplay = `Aula ${aula.Nro_Aula}`;
+      } else if (aula.Nombre) {
+        aulaDisplay = aula.Nombre;
+      } else {
+        aulaDisplay = aula.ID;
+      }
+    }
+
     return {
       id: h.ID,
       horario: horario ? `${horario.Hora_Inicio} - ${horario.Hora_Fin}` : 'N/A',
-      aula: aula?.Nombre || 'N/A',
+      aula: aulaDisplay,
       grupo: grupo?.Nombre || 'N/A',
       materia: materia?.Nombre || 'N/A',
       docente: getDocentesForHorario(h.ID),
@@ -420,7 +434,19 @@ export const Schedule = ({ user, setUser }) => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Aula</label>
                       {modal.mode === 'detail' ? (
                         <div className="py-2 text-gray-900 font-medium">
-                          {aulasBD.find(a => a.ID === parseInt(form.Aula_ID))?.Nombre}
+                          {(() => {
+                            const aula = aulasBD.find(a => a.ID === parseInt(form.Aula_ID));
+                            if (!aula) return 'N/A';
+                            if (aula.Nro_Facultad && aula.Nro_Aula) {
+                              return `Facultad ${aula.Nro_Facultad} - Aula ${aula.Nro_Aula}`;
+                            } else if (aula.Nro_Aula) {
+                              return `Aula ${aula.Nro_Aula}`;
+                            } else if (aula.Nombre) {
+                              return aula.Nombre;
+                            } else {
+                              return aula.ID;
+                            }
+                          })()}
                         </div>
                       ) : (
                         <select

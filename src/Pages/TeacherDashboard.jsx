@@ -6,6 +6,7 @@ import { getDocentes, getHorariosByDocente, getDetalleDocentes } from '../api/ax
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 // --- Export helpers ---
 function exportToPDF(courses) {
@@ -17,18 +18,20 @@ function exportToPDF(courses) {
   doc.save('asistencia_docente.pdf');
 }
 
-function exportToExcel(courses) {
+function exportToXLSX(courses) {
   const header = ['Materia', 'Horario', 'Aula', 'Estado'];
   const rows = courses.map(c => [c.name, c.hora || '', c.aula || '', c.estado]);
-  let csv = header.join(',') + '\n';
-  csv += rows.map(r => r.map(x => `"${x}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'asistencia_docente.csv';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  // Ajuste de ancho de columnas
+  ws['!cols'] = [
+    { wch: 40 },
+    { wch: 20 },
+    { wch: 30 },
+    { wch: 14 },
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
+  XLSX.writeFile(wb, 'asistencia_docente.xlsx');
 }
 
 function exportToHTML(courses) {
@@ -126,9 +129,9 @@ export const TeacherDashboard = ({ user, setUser }) => {
                 </button>
                 <button
                   className="bg-green-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-green-700"
-                  onClick={() => exportToExcel(myCourses)}
+                  onClick={() => exportToXLSX(myCourses)}
                 >
-                  Exportar Excel
+                  Exportar Excel (.xlsx)
                 </button>
                 <button
                   className="bg-gray-600 text-white px-3 py-2 rounded-lg font-semibold hover:bg-gray-700"
@@ -151,46 +154,57 @@ export const TeacherDashboard = ({ user, setUser }) => {
                 </div>
               </div>
               <div className="p-6">
-                <div className="space-y-4">
-                  {myCourses.length === 0 && !loading && !error && (
-                    <div className="text-sm text-gray-500">No tienes horarios asignados.</div>
-                  )}
-                  {myCourses.map((course) => (
-                    <div key={course.id} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <BookOpen className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{course.name}</h3>
-                            {course.aula && (
-                              <p className="text-sm text-gray-600">{course.aula}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <CheckCircle className="w-5 h-5 text-green-600" />
-                          <span
-                            className={`text-xs font-medium px-2 py-1 rounded-full ${
-                              course.estado === 'Presente' ? 'bg-green-100 text-green-700' :
-                              course.estado === 'Ausente' ? 'bg-red-100 text-red-700' :
-                              'bg-gray-100 text-gray-700'
-                            }`}
-                          >
-                            {course.estado}
-                          </span>
-                        </div>
-                      </div>
-                      {course.hora && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>{course.hora}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                {myCourses.length === 0 && !loading && !error && (
+                  <div className="text-sm text-gray-500">No tienes horarios asignados.</div>
+                )}
+                {myCourses.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-gray-700">
+                          <th className="px-3 py-2">Materia · Grupo</th>
+                          <th className="px-3 py-2">Horario</th>
+                          <th className="px-3 py-2">Aula</th>
+                          <th className="px-3 py-2">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {myCourses.map(course => (
+                          <tr key={course.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                  <BookOpen className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div className="font-medium text-gray-900">{course.name}</div>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-gray-700">
+                              {course.hora ? (
+                                <span className="inline-flex items-center">
+                                  <Clock className="w-4 h-4 mr-1 text-gray-500" />
+                                  {course.hora}
+                                </span>
+                              ) : '-'}
+                            </td>
+                            <td className="px-3 py-2 text-gray-700">{course.aula || '-'}</td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                  course.estado === 'Presente' ? 'bg-green-100 text-green-700' :
+                                  course.estado === 'Ausente' ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-700'
+                                }`}
+                              >
+                                {course.estado}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           </div>

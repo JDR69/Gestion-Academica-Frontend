@@ -51,12 +51,6 @@ export const Sidebar = ({ user }) => {
     ? adminMenu
     : teacherMenu.filter(item => item.id !== 'asistencia');
 
-  const supportItems = [
-  ];
-
-  const bottomItems = [
-  ];
-
   const MenuItem = ({ item, isActive }) => (
     <div
       onClick={() => navigate(item.path)}
@@ -103,7 +97,7 @@ export const Sidebar = ({ user }) => {
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <BarChart3 className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-lg text-gray-900">TailAdmin</span>
+            <span className="font-bold text-lg text-gray-900">FICCT</span>
           </div>
         )}
         
@@ -131,22 +125,16 @@ export const Sidebar = ({ user }) => {
             />
           ))}
         </div>
-
-        {/* Support Section */}
-       
       </div>
 
-      {/* Bottom Items */}
+      {/* User Info */}
       <div className="border-t border-gray-200 p-4">
-        <div className="space-y-1">
-          {bottomItems.map((item) => (
-            <MenuItem
-              key={item.id}
-              item={item}
-              isActive={location.pathname === item.path}
-            />
-          ))}
-        </div>
+        {!isCollapsed && user && (
+          <div className="flex flex-col items-center text-center">
+            <span className="font-semibold text-sm text-gray-800">{user.name}</span>
+            <span className="text-xs text-gray-500">{user.role}</span>
+          </div>
+        )}
       </div>
     </div>
   );
